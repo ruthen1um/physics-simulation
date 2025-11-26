@@ -209,7 +209,7 @@ int main() {
     const float fps {60};
 
     try {
-        auto game = game::Game{"Game", width, height, fps};
+        auto game = game::Game{"Simulation", width, height, fps};
         game.run();
     } catch (const game::exceptions::SystemException& ex) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, ex.what());
