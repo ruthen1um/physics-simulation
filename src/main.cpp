@@ -212,10 +212,10 @@ int main() {
         auto game = game::Game{"Simulation", width, height, fps};
         game.run();
     } catch (const game::exceptions::SystemException& ex) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, ex.what());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", ex.what());
         exit_code = 1;
     } catch (const game::exceptions::ArgumentException& ex) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, ex.what());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", ex.what());
         exit_code = 2;
     }
 
