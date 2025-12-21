@@ -7,17 +7,17 @@ namespace game::objects {
 
 class Rectangle: public Object2D {
 private:
-    const float w;
-    const float h;
+    float w;
+    float h;
 public:
-    Rectangle(const float x, const float y, const float w, const float h, const float mass);
+    Rectangle(float x, float y, float w, float h);
 
     virtual void render(SDL_Renderer* renderer) const noexcept override;
 
-    [[nodiscard]] virtual float top() const noexcept override;
-    [[nodiscard]] virtual float bottom() const noexcept override;
-    [[nodiscard]] virtual float left() const noexcept override;
-    [[nodiscard]] virtual float right() const noexcept override;
+    [[nodiscard]] virtual float top_y() const noexcept override;
+    [[nodiscard]] virtual float bottom_y() const noexcept override;
+    [[nodiscard]] virtual float left_x() const noexcept override;
+    [[nodiscard]] virtual float right_x() const noexcept override;
 };
 
 } // namespace game::objects

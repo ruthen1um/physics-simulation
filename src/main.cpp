@@ -4,6 +4,7 @@
 #include "exceptions.hpp"
 
 #include <SDL3/SDL.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <memory>
@@ -17,21 +18,31 @@ constexpr float GROUND_FRICTION_VALUE = 0.9f;
 
 void debug_show_box(SDL_Renderer* renderer, const Object2D& obj) {
     SDL_SetRenderDrawColor(renderer, 0xff, 0x00, 0x00, 0xff);
-    auto v1 = Vector2D{obj.left(), obj.top()};
-    auto v2 = Vector2D{obj.right(), obj.top()};
-    auto v3 = Vector2D{obj.right(), obj.bottom()};
-    auto v4 = Vector2D{obj.left(), obj.bottom()};
+    auto v1 = Vector2D{obj.left_x(), obj.top_y()};
+    auto v2 = Vector2D{obj.right_x(), obj.top_y()};
+    auto v3 = Vector2D{obj.right_x(), obj.bottom_y()};
+    auto v4 = Vector2D{obj.left_x(), obj.bottom_y()};
     SDL_RenderLine(renderer, v1.x, v1.y, v2.x, v2.y);
     SDL_RenderLine(renderer, v2.x, v2.y, v3.x, v3.y);
     SDL_RenderLine(renderer, v3.x, v3.y, v4.x, v4.y);
     SDL_RenderLine(renderer, v4.x, v4.y, v1.x, v1.y);
 }
 
-bool intersects(const Object2D& a, const Object2D& b) noexcept {
-    return !(a.right() <= b.left() ||
-             a.left() >= b.right() ||
-             a.bottom() <= b.top() ||
-             a.top() >= b.bottom());
+void clamp_to_window(Object2D& obj, float width, float height) {
+    const auto top_diff = std::abs(obj.pos.y - obj.top_y());
+    const auto bottom_diff = std::abs(obj.pos.y - obj.bottom_y());
+    const auto left_diff = std::abs(obj.pos.x - obj.left_x());
+    const auto right_diff = std::abs(obj.pos.x - obj.right_x());
+
+    const auto top_bound = 0.0f + top_diff;
+    const auto bottom_bound = height - bottom_diff;
+    const auto left_bound = 0.0f + left_diff;
+    const auto right_bound = width - right_diff;
+
+    const auto x = std::clamp(obj.pos.x, left_bound, right_bound);
+    const auto y = std::clamp(obj.pos.y, top_bound, bottom_bound);
+
+    obj.pos = Vector2D{x, y};
 }
 
 class Game {
@@ -54,16 +65,43 @@ private:
         }
     };
 
+    void run() {
+        const auto dt = 1.0f / fps;
+
+        while (running) {
+            auto start = SDL_GetTicks();
+
+            input();
+            update(dt);
+
+            auto end = SDL_GetTicks();
+            auto delta = static_cast<float>(end - start) / 1000.0f;
+
+            if (delta < dt) {
+                SDL_Delay(static_cast<Uint32>((dt - delta) * 1000.0f));
+            }
+
+            render();
+        }
+    }
+
 public:
     std::unique_ptr<SDL_Window, WindowDeleter> window;
     std::unique_ptr<SDL_Renderer, RendererDeleter> renderer;
     std::vector<std::unique_ptr<Object2D>> objects;
-    bool running;
+
     float fps;
 
-    Game(const std::string& title, const int width, const int height, const float fps)
-        : window{SDL_CreateWindow(title.c_str(), width, height, 0)},
-          renderer{SDL_CreateRenderer(window.get(), nullptr)}, running{true}, fps{fps} {
+    bool running{true};
+    bool show_boxes{false};
+    std::unique_ptr<Object2D> selected_obj{};
+    int window_width;
+    int window_height;
+
+    explicit Game(const std::string& title, int width, int height, float fps)
+        : window{SDL_CreateWindow(title.c_str(), width, height, SDL_WINDOW_RESIZABLE)},
+          renderer{SDL_CreateRenderer(window.get(), nullptr)},
+          fps{fps}, window_width{width}, window_height{height} {
         if (!window) {
             throw exceptions::SystemException{std::string{"Could not create window: "} + SDL_GetError()};
         }
@@ -75,148 +113,138 @@ public:
         if (fps <= 0.0f) {
             throw exceptions::ArgumentException{"fps value can't be negative"};
         }
+
+        run();
     }
 
     void input() {
-
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_EVENT_QUIT) {
+                running = false;
+            } else if (ev.type == SDL_EVENT_WINDOW_RESIZED) {
+                window_width = ev.window.data1;
+                window_height = ev.window.data2;
+            } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+                const auto x = ev.button.x;
+                const auto y = ev.button.y;
+                selected_obj = std::make_unique<objects::Rectangle>(x, y, 10, 10);
+                clamp_to_window(*selected_obj,
+                                static_cast<float>(window_width),
+                                static_cast<float>(window_height));
+            } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+                selected_obj->acc.y = GRAVITY;
+                objects.push_back(std::move(selected_obj));
+            } else if (selected_obj && ev.type == SDL_EVENT_MOUSE_MOTION) {
+                const auto x = ev.motion.x;
+                const auto y = ev.motion.y;
+                selected_obj->pos = Vector2D{x, y};
+                clamp_to_window(*selected_obj,
+                                static_cast<float>(window_width),
+                                static_cast<float>(window_height));
+            } else if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.scancode == SDL_SCANCODE_ESCAPE) {
+                show_boxes = !show_boxes;
+            }
+        }
     }
 
-    void update() {
+    void update(float dt) {
+        std::for_each(objects.begin(), objects.end(), [dt](auto& obj){
+            obj->update(dt);
+        });
 
+        std::for_each(objects.begin(), objects.end(), [this](auto& obj){
+            const auto window_top_y = 0.0f;
+            const auto window_bottom_y = static_cast<float>(window_height);
+            const auto window_left_x = 0.0f;
+            const auto window_right_x = static_cast<float>(window_width);
+
+            const auto obj_top_y = obj->top_y();
+            const auto obj_bottom_y = obj->bottom_y();
+            const auto obj_left_x = obj->left_x();
+            const auto obj_right_x = obj->right_x();
+
+            if (obj_bottom_y >= window_bottom_y) {
+                auto diff = obj_bottom_y - window_bottom_y;
+                obj->pos.y -= diff;
+                obj->vel.y *= -RESTITUTION;
+                obj->vel.x *= GROUND_FRICTION_VALUE;
+            } else if (obj_top_y <= window_top_y) {
+                auto diff = window_top_y - obj_top_y;
+                obj->pos.y += diff;
+                obj->vel.y *= -RESTITUTION;
+            }
+
+            if (obj_left_x <= window_left_x) {
+                auto diff = window_left_x - obj_left_x;
+                obj->pos.x += diff;
+                obj->vel.x *= -RESTITUTION;
+            } else if (obj_right_x >= window_right_x) {
+                auto diff = obj_right_x - window_right_x;
+                obj->pos.x -= diff;
+                obj->vel.x *= -RESTITUTION;
+            }
+        });
     }
 
     void render() {
+        auto p_renderer = renderer.get();
 
-    }
+        SDL_SetRenderDrawColor(p_renderer, 0x00, 0x00, 0x00, 0xff);
+        SDL_RenderClear(p_renderer);
 
-    void run() {
-        const auto dt = 1.0f / fps;
-        auto selected_obj = std::unique_ptr<Object2D>{};
-        auto show_boxes = false;
-
-        while (running) {
-            auto start = SDL_GetTicks();
-
-            SDL_Event ev;
-            while (SDL_PollEvent(&ev)) {
-                if (ev.type == SDL_EVENT_QUIT) {
-                    running = false;
-                } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-                    auto x = ev.button.x;
-                    auto y = ev.button.y;
-                    selected_obj = std::make_unique<objects::Rectangle>(x, y, 10, 10, 10);
-                } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_UP) {
-                    selected_obj->acc.y = GRAVITY;
-                    objects.push_back(std::move(selected_obj));
-                } else if (ev.type == SDL_EVENT_MOUSE_MOTION) {
-                    auto x = ev.motion.x;
-                    auto y = ev.motion.y;
-                    if (selected_obj) {
-                        selected_obj->pos = Vector2D{x, y};
-                    }
-                } else if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.scancode == SDL_SCANCODE_ESCAPE) {
-                    show_boxes = !show_boxes;
-                }
+        std::for_each(objects.begin(), objects.end(), [this, p_renderer](const auto& obj){
+            obj->render(p_renderer);
+            if (show_boxes) {
+                debug_show_box(p_renderer, *obj);
             }
+        });
 
-            std::for_each(objects.begin(), objects.end(), [&dt](auto& obj){
-                obj->update(dt);
-            });
-
-            int window_width, window_height;
-            SDL_GetWindowSize(window.get(), &window_width, &window_height);
-
-            std::for_each(objects.begin(), objects.end(), [window_width, window_height](auto& obj){
-                const auto window_top = 0.0f;
-                const auto window_bottom = static_cast<float>(window_height);
-                const auto window_left = 0.0f;
-                const auto window_right = static_cast<float>(window_width);
-
-                if (obj->bottom() >= window_bottom) {
-                    auto diff = obj->bottom() - window_bottom;
-                    obj->pos.y -= diff;
-                    obj->vel.y *= -RESTITUTION;
-                    obj->vel.x *= GROUND_FRICTION_VALUE;
-                } else if (obj->top() <= window_top) {
-                    auto diff = window_top - obj->top();
-                    obj->pos.y += diff;
-                    obj->vel.y *= -RESTITUTION;
-                }
-
-                if (obj->left() <= window_left) {
-                    auto diff = window_left - obj->left();
-                    obj->pos.x += diff;
-                    obj->vel.x *= -RESTITUTION;
-                } else if (obj->right() >= window_right) {
-                    auto diff = obj->right() - window_right;
-                    obj->pos.x -= diff;
-                    obj->vel.x *= -RESTITUTION;
-                }
-            });
-
-            for (size_t i = 0; i < objects.size(); ++i) {
-                for (size_t j = i + 1; j < objects.size(); ++j) {
-                    auto& a = *objects[i];
-                    auto& b = *objects[j];
-
-                    if (!intersects(a, b)) continue;
-                }
+        if (selected_obj) {
+            selected_obj->render(p_renderer);
+            if (show_boxes) {
+                debug_show_box(p_renderer, *selected_obj);
             }
-
-            auto end = SDL_GetTicks();
-            auto delta = static_cast<float>(end - start) / 1000.0f;
-
-            if (delta < dt) {
-                SDL_Delay(static_cast<Uint32>((dt - delta) * 1000.0f));
-            }
-
-            auto p_renderer = renderer.get();
-
-            SDL_SetRenderDrawColor(p_renderer, 0x00, 0x00, 0x00, 0xff);
-            SDL_RenderClear(p_renderer);
-
-            std::for_each(objects.begin(), objects.end(), [show_boxes, p_renderer](const auto& obj){
-                obj->render(p_renderer);
-                if (show_boxes) {
-                    debug_show_box(p_renderer, *obj);
-                }
-            });
-
-            if (selected_obj) {
-                selected_obj->render(p_renderer);
-                if (show_boxes) {
-                    debug_show_box(p_renderer, *selected_obj);
-                }
-            }
-
-            SDL_RenderPresent(p_renderer);
         }
+
+        SDL_RenderPresent(p_renderer);
     }
 };
 
 } // namespace game
 
 int main() {
+#ifdef DEBUG
+    spdlog::set_level(spdlog::level::debug);
+#else
+    spdlog::set_level(spdlog::level::err);
+#endif
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not init SDL: %s", SDL_GetError());
+        spdlog::error("Could not init SDL: {}", SDL_GetError());
         return 1;
     }
 
-    int exit_code {0};
+    auto exit_code{0};
+    auto caught_exception{false};
 
-    const int width {16 * 50};
-    const int height {9 * 50};
-    const float fps {60};
+    const auto title{"Physics Simulation"};
+    const auto width {16 * 50};
+    const auto height {9 * 50};
+    const auto fps {60.0f};
 
     try {
-        auto game = game::Game{"Simulation", width, height, fps};
-        game.run();
+        game::Game{title, width, height, fps};
     } catch (const game::exceptions::SystemException& ex) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", ex.what());
+        caught_exception = true;
         exit_code = 1;
     } catch (const game::exceptions::ArgumentException& ex) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", ex.what());
+        caught_exception = true;
         exit_code = 2;
+    }
+
+    if (caught_exception) {
+        spdlog::error("{}", SDL_GetError());
     }
 
     SDL_Quit();

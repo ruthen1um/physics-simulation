@@ -8,8 +8,8 @@
 
 namespace game::objects {
 
-Rectangle::Rectangle(const float x, const float y, const float w, const float h, const float mass)
-    : Object2D{Vector2D{x, y}, mass}, w{w}, h{h} {
+Rectangle::Rectangle(float x, float y, float w, float h)
+    : Object2D{Vector2D{x, y}}, w{w}, h{h} {
     if (w < 0 || h < 0) {
         throw exceptions::ArgumentException{"w and h should be non-negative"};
     }
@@ -17,23 +17,23 @@ Rectangle::Rectangle(const float x, const float y, const float w, const float h,
 
 void Rectangle::render(SDL_Renderer* renderer) const noexcept {
     SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0xff, 0xff);
-    auto rect = SDL_FRect{left(), top(), h, w};
+    auto rect = SDL_FRect{left_x(), top_y(), h, w};
     SDL_RenderFillRect(renderer, &rect);
 }
 
-[[nodiscard]] float Rectangle::top() const noexcept {
+[[nodiscard]] float Rectangle::top_y() const noexcept {
     return pos.y - h / 2.0f;
 }
 
-[[nodiscard]] float Rectangle::bottom() const noexcept {
+[[nodiscard]] float Rectangle::bottom_y() const noexcept {
     return pos.y + h / 2.0f;
 }
 
-[[nodiscard]] float Rectangle::left() const noexcept {
+[[nodiscard]] float Rectangle::left_x() const noexcept {
     return pos.x - w / 2.0f;
 }
 
-[[nodiscard]] float Rectangle::right() const noexcept {
+[[nodiscard]] float Rectangle::right_x() const noexcept {
     return pos.x + w / 2.0f;
 }
 

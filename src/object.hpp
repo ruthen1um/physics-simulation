@@ -2,27 +2,27 @@
 #define OBJECT_HPP
 
 #include "vector.hpp"
+
 #include <SDL3/SDL.h>
 
 namespace game {
 
 class Object2D {
 public:
-    Vector2D pos;
     Vector2D vel;
     Vector2D acc;
-    float mass;
+    Vector2D pos;
 
-    Object2D(const Vector2D& pos, float mass);
+    Object2D(Vector2D pos);
     virtual ~Object2D() = default;
 
-    virtual void update(const float dt) noexcept final;
+    virtual void update(float dt) noexcept final;
     virtual void render(SDL_Renderer* renderer) const noexcept = 0;
 
-    [[nodiscard]] virtual float top() const noexcept = 0;
-    [[nodiscard]] virtual float bottom() const noexcept = 0;
-    [[nodiscard]] virtual float left() const noexcept = 0;
-    [[nodiscard]] virtual float right() const noexcept = 0;
+    [[nodiscard]] virtual float top_y() const noexcept = 0;
+    [[nodiscard]] virtual float bottom_y() const noexcept = 0;
+    [[nodiscard]] virtual float left_x() const noexcept = 0;
+    [[nodiscard]] virtual float right_x() const noexcept = 0;
 };
 
 } // namespace game
