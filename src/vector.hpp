@@ -8,10 +8,11 @@ public:
     float x;
     float y;
 
-    constexpr explicit Vector2D() noexcept: x{0.0f}, y{0.0f} {}
-    constexpr explicit Vector2D(float x, float y) noexcept: x{x}, y{y} {}
+    constexpr explicit Vector2D() noexcept
+        : x{0.0f}, y{0.0f} {}
+    constexpr explicit Vector2D(float x, float y) noexcept
+        : x{x}, y{y} {}
 };
-
 
 [[nodiscard]] constexpr Vector2D operator+(const Vector2D& v1, const Vector2D& v2) noexcept {
     return Vector2D{v1.x + v2.x, v1.y + v2.y};

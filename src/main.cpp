@@ -1,7 +1,8 @@
-#include "vector.hpp"
+#include "exceptions.hpp"
 #include "object.hpp"
 #include "objects/rectangle.hpp"
-#include "exceptions.hpp"
+#include "vector.hpp"
+#include "window.hpp"
 
 #include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
@@ -46,48 +47,8 @@ void clamp_to_window(Object2D& obj, float width, float height) {
 }
 
 class Game {
-private:
-    class WindowDeleter {
-    public:
-        void operator()(SDL_Window* window) const noexcept {
-            if (window) {
-                SDL_DestroyWindow(window);
-            }
-        }
-    };
-
-    class RendererDeleter {
-    public:
-        void operator()(SDL_Renderer* renderer) const noexcept {
-            if (renderer) {
-                SDL_DestroyRenderer(renderer);
-            }
-        }
-    };
-
-    void run() {
-        const auto dt = 1.0f / fps;
-
-        while (running) {
-            auto start = SDL_GetTicks();
-
-            input();
-            update(dt);
-
-            auto end = SDL_GetTicks();
-            auto delta = static_cast<float>(end - start) / 1000.0f;
-
-            if (delta < dt) {
-                SDL_Delay(static_cast<Uint32>((dt - delta) * 1000.0f));
-            }
-
-            render();
-        }
-    }
-
 public:
-    std::unique_ptr<SDL_Window, WindowDeleter> window;
-    std::unique_ptr<SDL_Renderer, RendererDeleter> renderer;
+    SDLWindow& window;
     std::vector<std::unique_ptr<Object2D>> objects;
 
     float fps;
@@ -95,21 +56,9 @@ public:
     bool running{true};
     bool show_boxes{false};
     std::unique_ptr<Object2D> selected_obj{};
-    int window_width;
-    int window_height;
 
-    explicit Game(const std::string& title, int width, int height, float fps)
-        : window{SDL_CreateWindow(title.c_str(), width, height, SDL_WINDOW_RESIZABLE)},
-          renderer{SDL_CreateRenderer(window.get(), nullptr)},
-          fps{fps}, window_width{width}, window_height{height} {
-        if (!window) {
-            throw exceptions::SystemException{std::string{"Could not create window: "} + SDL_GetError()};
-        }
-
-        if (!renderer) {
-            throw exceptions::SystemException{std::string{"Could not create renderer: "} + SDL_GetError()};
-        }
-
+    explicit Game(SDLWindow& window, float fps)
+        : window{window}, fps{fps} {
         if (fps <= 0.0f) {
             throw exceptions::ArgumentException{"fps value can't be negative"};
         }
@@ -123,15 +72,16 @@ public:
             if (ev.type == SDL_EVENT_QUIT) {
                 running = false;
             } else if (ev.type == SDL_EVENT_WINDOW_RESIZED) {
-                window_width = ev.window.data1;
-                window_height = ev.window.data2;
+                window.width = ev.window.data1;
+                window.height = ev.window.data2;
             } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                 const auto x = ev.button.x;
                 const auto y = ev.button.y;
                 selected_obj = std::make_unique<objects::Rectangle>(x, y, 10, 10);
-                clamp_to_window(*selected_obj,
-                                static_cast<float>(window_width),
-                                static_cast<float>(window_height));
+                clamp_to_window(
+                    *selected_obj, static_cast<float>(window.width),
+                    static_cast<float>(window.height)
+                );
             } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_UP) {
                 selected_obj->acc.y = GRAVITY;
                 objects.push_back(std::move(selected_obj));
@@ -139,9 +89,10 @@ public:
                 const auto x = ev.motion.x;
                 const auto y = ev.motion.y;
                 selected_obj->pos = Vector2D{x, y};
-                clamp_to_window(*selected_obj,
-                                static_cast<float>(window_width),
-                                static_cast<float>(window_height));
+                clamp_to_window(
+                    *selected_obj, static_cast<float>(window.width),
+                    static_cast<float>(window.height)
+                );
             } else if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.scancode == SDL_SCANCODE_ESCAPE) {
                 show_boxes = !show_boxes;
             }
@@ -149,15 +100,13 @@ public:
     }
 
     void update(float dt) {
-        std::for_each(objects.begin(), objects.end(), [dt](auto& obj){
-            obj->update(dt);
-        });
+        std::for_each(objects.begin(), objects.end(), [dt](auto& obj) { obj->update(dt); });
 
-        std::for_each(objects.begin(), objects.end(), [this](auto& obj){
+        std::for_each(objects.begin(), objects.end(), [this](auto& obj) {
             const auto window_top_y = 0.0f;
-            const auto window_bottom_y = static_cast<float>(window_height);
+            const auto window_bottom_y = static_cast<float>(window.height);
             const auto window_left_x = 0.0f;
-            const auto window_right_x = static_cast<float>(window_width);
+            const auto window_right_x = static_cast<float>(window.width);
 
             const auto obj_top_y = obj->top_y();
             const auto obj_bottom_y = obj->bottom_y();
@@ -188,26 +137,47 @@ public:
     }
 
     void render() {
-        auto p_renderer = renderer.get();
+        auto renderer = window.get_sdl_renderer();
 
-        SDL_SetRenderDrawColor(p_renderer, 0x00, 0x00, 0x00, 0xff);
-        SDL_RenderClear(p_renderer);
+        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xff);
+        SDL_RenderClear(renderer);
 
-        std::for_each(objects.begin(), objects.end(), [this, p_renderer](const auto& obj){
-            obj->render(p_renderer);
+        std::for_each(objects.begin(), objects.end(), [this, renderer](const auto& obj) {
+            obj->render(renderer);
             if (show_boxes) {
-                debug_show_box(p_renderer, *obj);
+                debug_show_box(renderer, *obj);
             }
         });
 
         if (selected_obj) {
-            selected_obj->render(p_renderer);
+            selected_obj->render(renderer);
             if (show_boxes) {
-                debug_show_box(p_renderer, *selected_obj);
+                debug_show_box(renderer, *selected_obj);
             }
         }
 
-        SDL_RenderPresent(p_renderer);
+        SDL_RenderPresent(renderer);
+    }
+
+private:
+    void run() {
+        const auto dt = 1.0f / fps;
+
+        while (running) {
+            auto start = SDL_GetTicks();
+
+            input();
+            update(dt);
+
+            auto end = SDL_GetTicks();
+            auto delta = static_cast<float>(end - start) / 1000.0f;
+
+            if (delta < dt) {
+                SDL_Delay(static_cast<Uint32>((dt - delta) * 1000.0f));
+            }
+
+            render();
+        }
     }
 };
 
@@ -225,29 +195,15 @@ int main() {
         return 1;
     }
 
-    auto exit_code{0};
-    auto caught_exception{false};
-
     const auto title{"Physics Simulation"};
-    const auto width {16 * 50};
-    const auto height {9 * 50};
-    const auto fps {60.0f};
+    const auto width{16 * 50};
+    const auto height{9 * 50};
+    const auto fps{60.0f};
 
-    try {
-        game::Game{title, width, height, fps};
-    } catch (const game::exceptions::SystemException& ex) {
-        caught_exception = true;
-        exit_code = 1;
-    } catch (const game::exceptions::ArgumentException& ex) {
-        caught_exception = true;
-        exit_code = 2;
-    }
-
-    if (caught_exception) {
-        spdlog::error("{}", SDL_GetError());
-    }
+    auto window = game::SDLWindow{title, width, height};
+    game::Game{window, fps};
 
     SDL_Quit();
 
-    return exit_code;
+    return 0;
 }

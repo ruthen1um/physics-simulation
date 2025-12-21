@@ -5,10 +5,11 @@
 
 namespace game::objects {
 
-class Rectangle: public Object2D {
+class Rectangle : public Object2D {
 private:
     float w;
     float h;
+
 public:
     Rectangle(float x, float y, float w, float h);
 

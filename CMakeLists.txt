@@ -13,6 +13,7 @@ add_executable(${CMAKE_PROJECT_NAME}
     src/main.cpp
     src/object.cpp
     src/exceptions.cpp
+    src/window.cpp
     src/objects/rectangle.cpp
 )
 
