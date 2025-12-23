@@ -1,5 +1,9 @@
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#ifndef WINDOW_H
+#define WINDOW_H
+
+#include "color.h"
+#include "object.h"
+#include "vector.h"
 
 #include <memory>
 #include <string>
@@ -12,20 +16,12 @@ namespace detail {
 
 class SDLWindowDeleter {
 public:
-    void operator()(SDL_Window* window) const noexcept {
-        if (window) {
-            SDL_DestroyWindow(window);
-        }
-    }
+    void operator()(SDL_Window* window) const noexcept;
 };
 
 class SDLRendererDeleter {
 public:
-    void operator()(SDL_Renderer* renderer) const noexcept {
-        if (renderer) {
-            SDL_DestroyRenderer(renderer);
-        }
-    }
+    void operator()(SDL_Renderer* window) const noexcept;
 };
 
 } // namespace detail
@@ -36,7 +32,11 @@ public:
     int height;
 
     [[nodiscard]] explicit SDLWindow(const std::string& title, int width, int height);
-    [[nodiscard]] SDL_Renderer* get_sdl_renderer() noexcept;
+
+    void render_line(const Vector2D& v1, const Vector2D& v2, const Color& color) noexcept;
+    void render_bg(const Color& color) noexcept;
+    void render(const Object2D& obj, [[maybe_unused]] bool fill = true) noexcept;
+    void present() noexcept;
 
 private:
     std::unique_ptr<SDL_Window, detail::SDLWindowDeleter> sdl_window;
@@ -45,4 +45,4 @@ private:
 
 } // namespace game
 
-#endif // WINDOW_HPP
+#endif // WINDOW_H

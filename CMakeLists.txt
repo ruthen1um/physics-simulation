@@ -8,12 +8,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 find_package(SDL3 REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(gcem)
 
 add_executable(${CMAKE_PROJECT_NAME}
     src/main.cpp
-    src/object.cpp
     src/exceptions.cpp
     src/window.cpp
+    src/color.cpp
+    src/object.cpp
     src/objects/rectangle.cpp
 )
 
@@ -23,4 +25,4 @@ target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
     -Wall -Wextra -Wpedantic -Werror -Wconversion
 )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE sdl::sdl spdlog::spdlog)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE sdl::sdl spdlog::spdlog gcem)

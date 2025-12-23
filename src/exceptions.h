@@ -1,5 +1,5 @@
-#ifndef EXCEPTIONS_HPP
-#define EXCEPTIONS_HPP
+#ifndef EXCEPTIONS_H
+#define EXCEPTIONS_H
 
 #include <exception>
 #include <string>
@@ -26,4 +26,4 @@ private:
 
 } // namespace game::exceptions
 
-#endif // EXCEPTIONS_HPP
+#endif // EXCEPTIONS_H

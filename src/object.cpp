@@ -1,6 +1,4 @@
-#include "object.hpp"
-
-#include "vector.hpp"
+#include "object.h"
 
 namespace game {
 
