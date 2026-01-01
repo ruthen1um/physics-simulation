@@ -8,16 +8,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 find_package(SDL3 REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(gcem)
+find_package(gcem REQUIRED)
 
-add_executable(${CMAKE_PROJECT_NAME}
-    src/main.cpp
-    src/exceptions.cpp
-    src/window.cpp
-    src/color.cpp
-    src/object.cpp
-    src/objects/rectangle.cpp
-)
+add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 

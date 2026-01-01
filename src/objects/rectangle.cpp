@@ -1,12 +1,12 @@
 #include "rectangle.h"
 
 #include "../constants.h"
-#include "../exceptions.h"
-#include "../object.h"
 #include "../vector.h"
+#include "object.h"
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 
 #include <SDL3/SDL.h>
 #include <gcem.hpp>
@@ -14,40 +14,32 @@
 namespace game::objects {
 
 Rectangle::Rectangle(float center_x, float center_y, float w, float h)
-    : Object2D{{center_x, center_y}}, w{w}, h{h} {
-    if (w < 0 || h < 0) {
-        throw exceptions::ArgumentException{"w and h should be non-negative"};
+    : Object2D{{center_x, center_y}}, m_w{w}, m_h{h} {
+    if (w < 0) {
+        throw std::invalid_argument{"Rectangle constructor: w must be non-negative"};
     }
-}
 
-void Rectangle::update(float dt) noexcept {
-    constexpr auto tau = 2 * constants::PI;
-    Object2D::update(dt);
-    if (rotating) {
-        angle += tau * dt;
-        if (angle >= tau) {
-            angle -= tau;
-        }
+    if (h < 0) {
+        throw std::invalid_argument{"Rectangle constructor: h must be non-negative"};
     }
+
+    m_vertices_local.emplace_back(-m_w / 2, -m_h / 2);
+    m_vertices_local.emplace_back(+m_w / 2, -m_h / 2);
+    m_vertices_local.emplace_back(+m_w / 2, +m_h / 2);
+    m_vertices_local.emplace_back(-m_w / 2, +m_h / 2);
 }
 
 [[nodiscard]] std::vector<Vector2D> Rectangle::get_vertices_global() const noexcept {
-    const auto vertices_local = get_vertices_local();
     return {
-        pos + vertices_local[0].rotate(angle),
-        pos + vertices_local[1].rotate(angle),
-        pos + vertices_local[2].rotate(angle),
-        pos + vertices_local[3].rotate(angle),
+        m_pos + m_vertices_local[0].rotate(m_angle),
+        m_pos + m_vertices_local[1].rotate(m_angle),
+        m_pos + m_vertices_local[2].rotate(m_angle),
+        m_pos + m_vertices_local[3].rotate(m_angle),
     };
 }
 
 [[nodiscard]] std::vector<Vector2D> Rectangle::get_vertices_local() const noexcept {
-    return {
-        {-w / 2, -h / 2},
-        {+w / 2, -h / 2},
-        {+w / 2, +h / 2},
-        {-w / 2, +h / 2},
-    };
+    return m_vertices_local;
 }
 
 [[nodiscard]] Vector2D Rectangle::top() const noexcept {

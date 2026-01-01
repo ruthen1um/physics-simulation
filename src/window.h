@@ -2,7 +2,7 @@
 #define WINDOW_H
 
 #include "color.h"
-#include "object.h"
+#include "objects/object.h"
 #include "vector.h"
 
 #include <memory>
@@ -28,20 +28,23 @@ public:
 
 class SDLWindow {
 public:
-    int width;
-    int height;
+    int m_width;
+    int m_height;
 
     [[nodiscard]] explicit SDLWindow(const std::string& title, int width, int height);
 
     void render_line(const Vector2D& v1, const Vector2D& v2, const Color& color) noexcept;
-    void render_bg(const Color& color) noexcept;
-    void render(const Object2D& obj, [[maybe_unused]] bool fill = true) noexcept;
+    void clear(const Color& color) noexcept;
     void present() noexcept;
 
 private:
-    std::unique_ptr<SDL_Window, detail::SDLWindowDeleter> sdl_window;
-    std::unique_ptr<SDL_Renderer, detail::SDLRendererDeleter> sdl_renderer;
+    std::unique_ptr<SDL_Window, detail::SDLWindowDeleter> m_sdl_window;
+    std::unique_ptr<SDL_Renderer, detail::SDLRendererDeleter> m_sdl_renderer;
 };
+
+void render_object(
+    SDLWindow& window, const objects::Object2D& obj, [[maybe_unused]] bool fill = true
+) noexcept;
 
 } // namespace game
 

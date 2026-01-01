@@ -5,8 +5,7 @@
 
 namespace game {
 
-class Vector2D {
-public:
+struct Vector2D {
     float x;
     float y;
 
@@ -14,7 +13,7 @@ public:
         : x{0.0f}, y{0.0f} {}
     constexpr Vector2D(float x, float y) noexcept
         : x{x}, y{y} {}
-    constexpr Vector2D rotate(float angle) const noexcept {
+    [[nodiscard]] constexpr Vector2D rotate(float angle) const noexcept {
         return {
             x * gcem::cos(angle) + y * gcem::sin(angle),
             x * -gcem::sin(angle) + y * gcem::cos(angle),
