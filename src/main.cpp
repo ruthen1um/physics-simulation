@@ -1,17 +1,30 @@
+#include "core/color.h"
 #include "core/constants.h"
+#include "core/event.h"
+#include "core/input.h"
 #include "core/vec.h"
 #include "graphics/i_renderer.h"
+#include "graphics/i_window.h"
 #include "graphics/sdl_renderer.h"
 #include "graphics/sdl_window.h"
 #include "objects/object.h"
 #include "objects/rectangle.h"
 
 #include <algorithm>
+#include <cmath>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_timer.h>
+#include <fmt/base.h>
+#include <fmt/format.h>
+#include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 
 namespace game {
@@ -209,7 +222,7 @@ int main() {
     auto renderer = game::graphics::SDLRenderer{window};
 
     try {
-        auto game = game::Game{window, renderer, fps};
+        const auto game = game::Game{window, renderer, fps};
     } catch (const std::invalid_argument& ia) {
         spdlog::error("Invalid argument: {}", ia.what());
         return 1;

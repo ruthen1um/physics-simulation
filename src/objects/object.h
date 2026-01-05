@@ -5,8 +5,6 @@
 #include "../core/vec.h"
 #include "i_object.h"
 
-#include <vector>
-
 namespace game::objects {
 
 class Object2 : public IObject2 {

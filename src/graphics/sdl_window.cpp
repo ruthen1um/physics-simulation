@@ -1,9 +1,17 @@
 #include "sdl_window.h"
 #include "../core/event.h"
 #include "../core/input.h"
-#include "../objects/object.h"
 
+#include <functional>
 #include <stdexcept>
+#include <variant>
+
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_stdinc.h>
 
 using game::core::EventHandler;
 using game::core::EventType;

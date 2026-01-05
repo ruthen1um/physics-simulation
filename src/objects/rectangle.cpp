@@ -1,15 +1,11 @@
 #include "rectangle.h"
 
-#include "../core/constants.h"
-#include "../core/vec.h"
-#include "object.h"
-
 #include <algorithm>
-#include <array>
 #include <stdexcept>
 
-#include <SDL3/SDL.h>
-#include <gcem.hpp>
+#include "../core/color.h"
+#include "../core/vec.h"
+#include "object.h"
 
 using game::core::Color;
 using game::core::Vec2;

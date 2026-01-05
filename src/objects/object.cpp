@@ -1,4 +1,6 @@
 #include "object.h"
+#include "../core/color.h"
+#include "../core/vec.h"
 
 using game::core::Color;
 using game::core::Vec2;

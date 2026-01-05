@@ -1,9 +1,12 @@
 #include "sdl_renderer.h"
 #include "../core/color.h"
 #include "../core/vec.h"
-#include "../objects/object.h"
+#include "sdl_window.h"
 
 #include <stdexcept>
+#include <string>
+
+#include <SDL3/SDL_error.h>
 
 using game::core::Color;
 using game::core::Vec2;
