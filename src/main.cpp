@@ -1,8 +1,10 @@
-#include "constants.h"
+#include "core/constants.h"
+#include "core/vec.h"
+#include "graphics/i_renderer.h"
+#include "graphics/sdl_renderer.h"
+#include "graphics/sdl_window.h"
 #include "objects/object.h"
 #include "objects/rectangle.h"
-#include "vector.h"
-#include "window.h"
 
 #include <algorithm>
 #include <memory>
@@ -14,7 +16,21 @@
 
 namespace game {
 
-void clamp_to_window(objects::Object2D& obj, float width, float height) {
+void render_object(
+    graphics::IRenderer& renderer, const objects::Object2& obj, [[maybe_unused]] bool fill = true
+) noexcept {
+    const auto vertices = obj.get_vertices_global();
+    auto begin = vertices.cbegin();
+    auto end = vertices.cend();
+    for (auto it = begin; it != end && std::next(it) != end; ++it) {
+        auto v1 = *it;
+        auto v2 = *std::next(it);
+        renderer.render_line(v1, v2, obj.color());
+    }
+    renderer.render_line(*std::prev(end), *begin, obj.color());
+}
+
+void clamp_to_window(objects::Object2& obj, float width, float height) noexcept {
     const auto obj_pos = obj.pos();
     const auto top_diff = std::abs(obj_pos.y - obj.top().y);
     const auto bottom_diff = std::abs(obj_pos.y - obj.bottom().y);
@@ -34,11 +50,53 @@ void clamp_to_window(objects::Object2D& obj, float width, float height) {
 
 class Game {
 public:
-    Game(SDLWindow& window, float fps)
-        : m_window{window}, m_fps{fps} {
+    Game(graphics::IWindow& window, graphics::IRenderer& renderer, float fps)
+        : m_window{window}, m_renderer{renderer}, m_fps{fps} {
         if (fps <= 0.0f) {
             throw std::invalid_argument{"fps value can't be negative"};
         }
+
+        m_window.set_event_handler(core::EventType::KeyEvent, [&](const core::EventData& data) {
+            auto ev = std::get<core::KeyEventData>(data);
+            if (ev.state == core::KeyState::Down && ev.key == core::Key::Backspace) {
+                m_objects.clear();
+            }
+        });
+
+        m_window.set_event_handler(
+            core::EventType::MouseButtonEvent, [&](const core::EventData& data) {
+                auto ev = std::get<core::MouseButtonEventData>(data);
+                if (ev.button == core::MouseButton::Left) {
+                    if (ev.state == core::MouseButtonState::Down) {
+                        m_selected_obj =
+                            std::make_unique<objects::Rectangle>(ev.pos.x, ev.pos.y, 10, 10);
+                        m_selected_obj->ang_vel(-2.0f);
+                        clamp_to_window(
+                            *m_selected_obj, static_cast<float>(m_window.width()),
+                            static_cast<float>(m_window.height())
+                        );
+                    } else {
+                        m_selected_obj->acc({0.0f, core::constants::GRAVITY});
+                        m_objects.push_back(std::move(m_selected_obj));
+                    }
+                }
+            }
+        );
+
+        m_window.set_event_handler(
+            core::EventType::MouseMotionEvent, [&](const core::EventData& data) {
+                auto ev = std::get<core::MouseMotionEventData>(data);
+                if (m_selected_obj) {
+                    m_selected_obj->pos(
+                        {static_cast<float>(ev.pos.x), static_cast<float>(ev.pos.y)}
+                    );
+                    clamp_to_window(
+                        *m_selected_obj, static_cast<float>(m_window.width()),
+                        static_cast<float>(m_window.height())
+                    );
+                }
+            }
+        );
 
         run();
     }
@@ -46,10 +104,10 @@ public:
     void run() {
         const auto dt = 1.0f / m_fps;
 
-        while (m_running) {
+        while (!m_window.should_close()) {
             const auto start = SDL_GetTicks();
 
-            input();
+            m_window.poll_events();
             update(dt);
 
             const auto end = SDL_GetTicks();
@@ -63,42 +121,6 @@ public:
         }
     }
 
-    void input() {
-        SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_EVENT_QUIT) {
-                m_running = false;
-            } else if (ev.type == SDL_EVENT_WINDOW_RESIZED) {
-                m_window.m_width = ev.window.data1;
-                m_window.m_height = ev.window.data2;
-            } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
-                       ev.button.button == SDL_BUTTON_LEFT) {
-                const auto x = ev.button.x;
-                const auto y = ev.button.y;
-                m_selected_obj = std::make_unique<objects::Rectangle>(x, y, 10, 10);
-                m_selected_obj->ang_vel(-2.0f);
-                clamp_to_window(
-                    *m_selected_obj, static_cast<float>(m_window.m_width),
-                    static_cast<float>(m_window.m_height)
-                );
-            } else if (ev.type == SDL_EVENT_MOUSE_BUTTON_UP &&
-                       ev.button.button == SDL_BUTTON_LEFT) {
-                m_selected_obj->acc({0.0f, constants::GRAVITY});
-                m_objects.push_back(std::move(m_selected_obj));
-            } else if (m_selected_obj && ev.type == SDL_EVENT_MOUSE_MOTION) {
-                const auto x = ev.motion.x;
-                const auto y = ev.motion.y;
-                m_selected_obj->pos({x, y});
-                clamp_to_window(
-                    *m_selected_obj, static_cast<float>(m_window.m_width),
-                    static_cast<float>(m_window.m_height)
-                );
-            } else if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.scancode == SDL_SCANCODE_BACKSPACE) {
-                m_objects.clear();
-            }
-        }
-    }
-
     void update(float dt) {
         std::for_each(m_objects.begin(), m_objects.end(), [dt](auto& obj) { obj->update(dt); });
 
@@ -108,9 +130,9 @@ public:
 
         std::for_each(m_objects.begin(), m_objects.end(), [this](auto& obj) {
             const auto window_top_y = 0.0f;
-            const auto window_bottom_y = static_cast<float>(m_window.m_height);
+            const auto window_bottom_y = static_cast<float>(m_window.height());
             const auto window_left_x = 0.0f;
-            const auto window_right_x = static_cast<float>(m_window.m_width);
+            const auto window_right_x = static_cast<float>(m_window.width());
 
             const auto obj_top_y = obj->top().y;
             const auto obj_bottom_y = obj->bottom().y;
@@ -123,22 +145,22 @@ public:
             if (obj_bottom_y >= window_bottom_y) {
                 const auto diff = obj_bottom_y - window_bottom_y;
                 pos.y -= diff;
-                vel.y *= -constants::RESTITUTION;
-                vel.x *= constants::GROUND_FRICTION_VALUE;
+                vel.y *= -core::constants::RESTITUTION;
+                vel.x *= core::constants::GROUND_FRICTION_VALUE;
             } else if (obj_top_y <= window_top_y) {
                 const auto diff = window_top_y - obj_top_y;
                 pos.y += diff;
-                vel.y *= -constants::RESTITUTION;
+                vel.y *= -core::constants::RESTITUTION;
             }
 
             if (obj_left_x <= window_left_x) {
                 const auto diff = window_left_x - obj_left_x;
                 pos.x += diff;
-                vel.x *= -constants::RESTITUTION;
+                vel.x *= -core::constants::RESTITUTION;
             } else if (obj_right_x >= window_right_x) {
                 const auto diff = obj_right_x - window_right_x;
                 pos.x -= diff;
-                vel.x *= -constants::RESTITUTION;
+                vel.x *= -core::constants::RESTITUTION;
             }
 
             obj->pos(pos);
@@ -147,27 +169,26 @@ public:
     }
 
     void render() {
-        m_window.clear({0x00, 0x00, 0x00, 0xff});
+        m_renderer.clear({0x00, 0x00, 0x00, 0xff});
 
         std::for_each(m_objects.begin(), m_objects.end(), [this](const auto& obj) {
-            render_object(m_window, *obj);
+            render_object(m_renderer, *obj);
         });
 
         if (m_selected_obj) {
-            render_object(m_window, *m_selected_obj);
+            render_object(m_renderer, *m_selected_obj);
         }
 
-        m_window.present();
+        m_renderer.present();
     }
 
 private:
-    SDLWindow& m_window;
-    std::vector<std::unique_ptr<objects::Object2D>> m_objects;
+    graphics::IWindow& m_window;
+    graphics::IRenderer& m_renderer;
+    std::vector<std::unique_ptr<objects::Object2>> m_objects;
 
     float m_fps;
-
-    bool m_running{true};
-    std::unique_ptr<objects::Object2D> m_selected_obj{};
+    std::unique_ptr<objects::Object2> m_selected_obj{};
 };
 
 } // namespace game
@@ -179,25 +200,23 @@ int main() {
     spdlog::set_level(spdlog::level::err);
 #endif
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        spdlog::error("Could not init SDL: {}", SDL_GetError());
-        return 1;
-    }
-
     const auto title{"Physics Simulation"};
     const auto width{16 * 50};
     const auto height{9 * 50};
     const auto fps{60.0f};
 
-    auto window = game::SDLWindow{title, width, height};
+    auto window = game::graphics::SDLWindow{title, width, height};
+    auto renderer = game::graphics::SDLRenderer{window};
+
     try {
-        auto game = game::Game{window, fps};
+        auto game = game::Game{window, renderer, fps};
     } catch (const std::invalid_argument& ia) {
         spdlog::error("Invalid argument: {}", ia.what());
         return 1;
+    } catch (const std::runtime_error& re) {
+        spdlog::error("Runtime error: {}", re.what());
+        return 2;
     }
-
-    SDL_Quit();
 
     return 0;
 }

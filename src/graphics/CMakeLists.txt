@@ -1,5 +1,5 @@
 target_sources(${CMAKE_PROJECT_NAME}
     PUBLIC
-        object.cpp
-        rectangle.cpp
+        sdl_window.cpp
+        sdl_renderer.cpp
 )

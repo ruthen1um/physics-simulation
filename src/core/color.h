@@ -1,12 +1,11 @@
-#ifndef COLOR_H
-#define COLOR_H
+#ifndef CORE_COLOR_H
+#define CORE_COLOR_H
 
 #include <cstdint>
 
-namespace game {
+namespace game::core {
 
-class Color {
-public:
+struct Color {
     uint8_t r{0xff};
     uint8_t g{0xff};
     uint8_t b{0xff};
@@ -17,6 +16,6 @@ public:
         : r{r}, g{g}, b{b}, a{a} {};
 };
 
-} // namespace game
+} // namespace game::core
 
-#endif // COLOR_H
+#endif // CORE_COLOR_H

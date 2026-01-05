@@ -1,31 +1,31 @@
-#ifndef RECTANGLE_H
-#define RECTANGLE_H
+#ifndef OBJECTS_RECTANGLE_H
+#define OBJECTS_RECTANGLE_H
 
-#include "../vector.h"
+#include "../core/vec.h"
 #include "object.h"
 
 #include <vector>
 
 namespace game::objects {
 
-class Rectangle : public Object2D {
+class Rectangle : public Object2 {
 public:
     Rectangle(float center_x, float center_y, float w, float h);
 
-    [[nodiscard]] std::vector<Vector2D> get_vertices_global() const noexcept override;
-    [[nodiscard]] std::vector<Vector2D> get_vertices_local() const noexcept override;
+    [[nodiscard]] std::vector<core::Vec2> get_vertices_global() const noexcept override;
+    [[nodiscard]] std::vector<core::Vec2> get_vertices_local() const noexcept override;
 
-    [[nodiscard]] Vector2D top() const noexcept override;
-    [[nodiscard]] Vector2D right() const noexcept override;
-    [[nodiscard]] Vector2D bottom() const noexcept override;
-    [[nodiscard]] Vector2D left() const noexcept override;
+    [[nodiscard]] core::Vec2 top() const noexcept override;
+    [[nodiscard]] core::Vec2 right() const noexcept override;
+    [[nodiscard]] core::Vec2 bottom() const noexcept override;
+    [[nodiscard]] core::Vec2 left() const noexcept override;
 
 private:
     float m_w;
     float m_h;
-    std::vector<Vector2D> m_vertices_local;
+    std::vector<core::Vec2> m_vertices_local;
 };
 
 } // namespace game::objects
 
-#endif // RECTANGLE_H
+#endif // OBJECTS_RECTANGLE_H
