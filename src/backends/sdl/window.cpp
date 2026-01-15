@@ -1,10 +1,4 @@
-#include "sdl_window.h"
-#include "../core/event.h"
-#include "../core/input.h"
-
-#include <functional>
-#include <stdexcept>
-#include <variant>
+#include "backends/sdl/window.h"
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
@@ -12,19 +6,15 @@
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_stdinc.h>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <variant>
 
-using game::core::EventHandler;
-using game::core::EventType;
-using game::core::Key;
-using game::core::KeyEventData;
-using game::core::KeyState;
-using game::core::MouseButton;
-using game::core::MouseButtonEventData;
-using game::core::MouseButtonState;
-using game::core::MouseMotionEventData;
-using game::core::MousePos;
+#include "core/event.h"
+#include "core/input.h"
 
-namespace game::graphics {
+namespace game::backends::sdl {
 
 namespace detail {
 
@@ -34,7 +24,9 @@ void SDLWindowDeleter::operator()(SDL_Window* window) const noexcept {
     }
 }
 
-Key map_sdl_scancode(SDL_Scancode scancode) {
+core::Key map_sdl_scancode(SDL_Scancode scancode) {
+    using namespace core;
+
     switch (scancode) {
         case SDL_SCANCODE_ESCAPE:
             return Key::Escape;
@@ -45,7 +37,9 @@ Key map_sdl_scancode(SDL_Scancode scancode) {
     }
 }
 
-MouseButton map_sdl_mouse_button(Uint8 button) {
+core::MouseButton map_sdl_mouse_button(Uint8 button) {
+    using namespace core;
+
     switch (button) {
         case SDL_BUTTON_LEFT:
             return MouseButton::Left;
@@ -87,6 +81,8 @@ SDLWindow::~SDLWindow() {
 }
 
 void SDLWindow::poll_events() noexcept {
+    using namespace core;
+
     SDL_Event ev;
     while (SDL_PollEvent(&ev)) {
         if (ev.type == SDL_EVENT_QUIT) {
@@ -99,31 +95,31 @@ void SDLWindow::poll_events() noexcept {
             const auto state = ev.type == SDL_EVENT_MOUSE_BUTTON_UP ? MouseButtonState::Up
                                                                     : MouseButtonState::Down;
             const auto pos = MousePos{static_cast<int>(ev.button.x), static_cast<int>(ev.button.y)};
-            m_handlers[EventType::MouseButtonEvent](MouseButtonEventData{button, state, pos});
+            m_handler(MouseButtonEvent{button, state, pos});
         } else if (ev.type == SDL_EVENT_MOUSE_MOTION) {
             const auto pos = MousePos{static_cast<int>(ev.button.x), static_cast<int>(ev.button.y)};
-            m_handlers[EventType::MouseMotionEvent](MouseMotionEventData{pos});
+            m_handler(MouseMotionEvent{pos});
         } else if (ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_KEY_UP) {
             const auto key = detail::map_sdl_scancode(ev.key.scancode);
             const auto state = ev.type == SDL_EVENT_MOUSE_BUTTON_UP ? KeyState::Up : KeyState::Down;
-            m_handlers[EventType::KeyEvent](KeyEventData{key, state});
+            m_handler(KeyEvent{key, state});
         }
     }
 }
 
-void SDLWindow::set_event_handler(EventType type, EventHandler handler) noexcept {
-    m_handlers.insert_or_assign(type, handler);
+void SDLWindow::set_event_handler(core::EventHandler handler) noexcept {
+    m_handler = std::move(handler);
 }
 
 [[nodiscard]] bool SDLWindow::should_close() const noexcept {
     return m_should_close;
 }
 
-[[nodiscard]] int SDLWindow::width() const noexcept {
+[[nodiscard]] int SDLWindow::get_width() const noexcept {
     return m_width;
 }
 
-[[nodiscard]] int SDLWindow::height() const noexcept {
+[[nodiscard]] int SDLWindow::get_height() const noexcept {
     return m_height;
 }
 
@@ -131,4 +127,4 @@ void SDLWindow::set_event_handler(EventType type, EventHandler handler) noexcept
     return m_window.get();
 }
 
-} // namespace game::graphics
+} // namespace game::backends::sdl

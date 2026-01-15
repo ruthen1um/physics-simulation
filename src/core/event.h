@@ -8,26 +8,24 @@
 
 namespace game::core {
 
-struct MouseButtonEventData {
+struct MouseButtonEvent {
     MouseButton button;
     MouseButtonState state;
     MousePos pos;
 };
 
-struct MouseMotionEventData {
+struct MouseMotionEvent {
     MousePos pos;
 };
 
-struct KeyEventData {
+struct KeyEvent {
     Key key;
     KeyState state;
 };
 
-enum class EventType { MouseButtonEvent, MouseMotionEvent, KeyEvent };
+using Event = std::variant<MouseButtonEvent, MouseMotionEvent, KeyEvent>;
 
-using EventData = std::variant<MouseButtonEventData, MouseMotionEventData, KeyEventData>;
-
-using EventHandler = std::function<void(const EventData&)>;
+using EventHandler = std::function<void(const Event&)>;
 
 } // namespace game::core
 

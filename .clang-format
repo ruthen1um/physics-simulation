@@ -6,3 +6,4 @@ IndentCaseLabels: true
 PackConstructorInitializers: NextLineOnly
 PointerAlignment: Left
 AllowShortFunctionsOnASingleLine: Empty
+AlwaysBreakTemplateDeclarations: Yes
