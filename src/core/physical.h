@@ -1,10 +1,7 @@
-#ifndef CORE_INTERFACES_H
-#define CORE_INTERFACES_H
+#ifndef CORE_PHYSICAL_H
+#define CORE_PHYSICAL_H
 
-#include "core/math.h"
-#include "core/renderer.h"
-
-#include <array>
+#include "core/vector.h"
 
 namespace game::core {
 
@@ -30,16 +27,6 @@ public:
     virtual void set_ang_vel(float ang_vel) noexcept = 0;
 };
 
-class IRenderable {
-public:
-    virtual ~IRenderable() = default;
-
-    virtual void render(IRenderer& renderer) const noexcept = 0;
-
-    [[nodiscard]] virtual Color get_color() const noexcept = 0;
-    virtual void set_color(Color color) noexcept = 0;
-};
-
 } // namespace game::core
 
-#endif // CORE_INTERFACES_H
+#endif // CORE_PHYSICAL_H

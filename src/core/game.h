@@ -1,12 +1,12 @@
 #ifndef CORE_GAME_H
 #define CORE_GAME_H
 
-#include <optional>
+#include <memory>
 #include <vector>
 
 #include "core/renderer.h"
 #include "core/window.h"
-#include "objects/polygon.h"
+#include "objects/shape.h"
 
 namespace game::core {
 class IRenderer;
@@ -29,8 +29,8 @@ private:
     core::IRenderer& m_renderer;
     float m_fps;
 
-    std::vector<objects::Quad> m_quads;
-    std::optional<objects::Quad> m_selected_quad;
+    std::vector<std::unique_ptr<objects::Shape>> m_shapes;
+    std::unique_ptr<objects::Shape> m_selected_shape;
 };
 
 } // namespace game::core

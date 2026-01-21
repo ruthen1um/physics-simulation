@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
-#include <optional>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -15,21 +14,20 @@
 #include "core/constants.h"
 #include "core/event.h"
 #include "core/input.h"
-#include "core/math.h"
 #include "core/renderer.h"
+#include "core/vector.h"
 #include "core/window.h"
-#include "objects/polygon.h"
+#include "objects/rectangle.h"
 
 namespace game::core {
 
-template <std::size_t N>
-void clamp_to_window(objects::Polygon<N>& poly, float width, float height) noexcept {
-    const auto verts = poly.get_vertices_world();
+void clamp_to_window(objects::Shape& shape, float width, float height) noexcept {
+    const auto verts = shape.get_vertices_world();
     const auto top = get_uppermost_vertex(verts);
     const auto bottom = get_lowermost_vertex(verts);
     const auto left = get_leftmost_vertex(verts);
     const auto right = get_rightmost_vertex(verts);
-    const auto pos = poly.get_pos();
+    const auto pos = shape.get_pos();
 
     const auto top_diff = std::abs(pos.y - top.y);
     const auto bottom_diff = std::abs(pos.y - bottom.y);
@@ -44,7 +42,7 @@ void clamp_to_window(objects::Polygon<N>& poly, float width, float height) noexc
     const auto x = std::clamp(pos.x, left_bound, right_bound);
     const auto y = std::clamp(pos.y, top_bound, bottom_bound);
 
-    poly.set_pos({x, y});
+    shape.set_pos({x, y});
 }
 
 Game::Game(core::IWindow& window, core::IRenderer& renderer, float fps)
@@ -56,7 +54,7 @@ Game::Game(core::IWindow& window, core::IRenderer& renderer, float fps)
 
     const auto handle_key = [this](const KeyEvent& ev) {
         if (ev.state == KeyState::Down && ev.key == Key::Backspace) {
-            m_quads.clear();
+            m_shapes.clear();
         }
     };
 
@@ -69,25 +67,25 @@ Game::Game(core::IWindow& window, core::IRenderer& renderer, float fps)
                 const auto h = 10;
                 const auto c = core::Color{0xff, 0xff, 0xff, 0xff};
 
-                m_selected_quad = objects::Quad::rectangle(x, y, w, h, c);
+                m_selected_shape = std::make_unique<objects::Rectangle>(x, y, w, h, c);
 
-                m_selected_quad->set_ang_vel(-2.0f);
+                m_selected_shape->set_ang_vel(-2.0f);
                 clamp_to_window(
-                    *m_selected_quad, static_cast<float>(m_window.get_width()),
+                    *m_selected_shape, static_cast<float>(m_window.get_width()),
                     static_cast<float>(m_window.get_height())
                 );
             } else {
-                m_selected_quad->set_acc({0.0f, GRAVITY});
-                m_quads.push_back(*std::exchange(m_selected_quad, std::nullopt));
+                m_selected_shape->set_acc({0.0f, GRAVITY});
+                m_shapes.push_back(std::move(m_selected_shape));
             }
         }
     };
 
     const auto handle_mouse_motion = [this](const MouseMotionEvent& ev) {
-        if (m_selected_quad) {
-            m_selected_quad->set_pos({static_cast<float>(ev.pos.x), static_cast<float>(ev.pos.y)});
+        if (m_selected_shape) {
+            m_selected_shape->set_pos({static_cast<float>(ev.pos.x), static_cast<float>(ev.pos.y)});
             clamp_to_window(
-                *m_selected_quad, static_cast<float>(m_window.get_width()),
+                *m_selected_shape, static_cast<float>(m_window.get_width()),
                 static_cast<float>(m_window.get_height())
             );
         }
@@ -134,29 +132,29 @@ void Game::input() {
 }
 
 void Game::update(float dt) {
-    for (auto& quad : m_quads) {
-        quad.integrate(dt);
+    for (auto& shape : m_shapes) {
+        shape->integrate(dt);
     }
 
-    if (m_selected_quad) {
-        m_selected_quad->integrate(dt);
+    if (m_selected_shape) {
+        m_selected_shape->integrate(dt);
     }
 
-    for (auto& quad : m_quads) {
+    for (auto& shape : m_shapes) {
         const auto window_top_y = 0.0f;
         const auto window_bottom_y = static_cast<float>(m_window.get_height());
         const auto window_left_x = 0.0f;
         const auto window_right_x = static_cast<float>(m_window.get_width());
 
-        const auto vertices = quad.get_vertices_world();
+        const auto vertices = shape->get_vertices_world();
 
         const auto obj_top_y = get_uppermost_vertex(vertices).y;
         const auto obj_bottom_y = get_lowermost_vertex(vertices).y;
         const auto obj_left_x = get_leftmost_vertex(vertices).x;
         const auto obj_right_x = get_rightmost_vertex(vertices).x;
 
-        auto pos = quad.get_pos();
-        auto vel = quad.get_vel();
+        auto pos = shape->get_pos();
+        auto vel = shape->get_vel();
 
         if (obj_bottom_y >= window_bottom_y) {
             const auto diff = obj_bottom_y - window_bottom_y;
@@ -179,20 +177,20 @@ void Game::update(float dt) {
             vel.x *= -RESTITUTION;
         }
 
-        quad.set_pos(pos);
-        quad.set_vel(vel);
+        shape->set_pos(pos);
+        shape->set_vel(vel);
     };
 }
 
 void Game::render() {
     m_renderer.clear({0x00, 0x00, 0x00, 0xff});
 
-    for (const auto& quad : m_quads) {
-        quad.render(m_renderer);
+    for (const auto& shape : m_shapes) {
+        shape->render(m_renderer);
     }
 
-    if (m_selected_quad) {
-        m_selected_quad->render(m_renderer);
+    if (m_selected_shape) {
+        m_selected_shape->render(m_renderer);
     }
 
     m_renderer.present();

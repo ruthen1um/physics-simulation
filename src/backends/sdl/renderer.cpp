@@ -1,7 +1,7 @@
 #include "backends/sdl/renderer.h"
 #include "backends/sdl/window.h"
 #include "core/color.h"
-#include "core/math.h"
+#include "core/vector.h"
 
 #include <stdexcept>
 #include <string>

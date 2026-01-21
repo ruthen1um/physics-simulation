@@ -3,7 +3,7 @@
 
 #include "core/color.h"
 #include "core/event.h"
-#include "core/math.h"
+#include "core/vector.h"
 
 #include <memory>
 #include <string>

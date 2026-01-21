@@ -16,10 +16,10 @@ int main() {
     spdlog::set_level(spdlog::level::err);
 #endif
 
-    const auto title{"Physics Simulation"};
-    const auto width{16 * 50};
-    const auto height{9 * 50};
-    const auto fps{60.0f};
+    const auto title = "Physics Simulation";
+    const auto width = 16 * 50;
+    const auto height = 9 * 50;
+    const auto fps = 60.0f;
 
     auto window = game::backends::sdl::SDLWindow{title, width, height};
     auto renderer = game::backends::sdl::SDLRenderer{window};

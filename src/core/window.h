@@ -2,7 +2,7 @@
 #define CORE_WINDOW_H
 
 #include "core/event.h"
-#include "core/math.h"
+#include "core/vector.h"
 
 #include <memory>
 #include <string>

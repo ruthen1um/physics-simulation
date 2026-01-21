@@ -7,8 +7,8 @@
 #include <string>
 
 #include "core/color.h"
-#include "core/math.h"
 #include "core/renderer.h"
+#include "core/vector.h"
 #include "window.h"
 
 namespace game::backends::sdl {

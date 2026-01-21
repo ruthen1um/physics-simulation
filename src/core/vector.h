@@ -1,21 +1,23 @@
-#ifndef CORE_VEC2_H
-#define CORE_VEC2_H
+#ifndef CORE_VECTOR_H
+#define CORE_VECTOR_H
 
 #include <gcem.hpp>
 
 namespace game::core {
 
-constexpr auto PI = 3.14159265358979323846f;
-
 struct Vec2 {
     float x;
     float y;
 
-    constexpr Vec2() noexcept
-        : x{0.0f}, y{0.0f} {}
-    constexpr Vec2(float x, float y) noexcept
-        : x{x}, y{y} {}
+    [[nodiscard]] constexpr Vec2() noexcept;
+    [[nodiscard]] constexpr Vec2(float x, float y) noexcept;
 };
+
+[[nodiscard]] constexpr Vec2::Vec2() noexcept
+    : x{0.0f}, y{0.0f} {}
+
+[[nodiscard]] constexpr Vec2::Vec2(float x, float y) noexcept
+    : x{x}, y{y} {}
 
 [[nodiscard]] constexpr Vec2 rotate(const Vec2& v, float angle) noexcept {
     return {
@@ -60,4 +62,4 @@ constexpr Vec2& operator-=(Vec2& v1, const Vec2& v2) noexcept {
 
 } // namespace game::core
 
-#endif // CORE_VEC2_H
+#endif // CORE_VECTOR_H
